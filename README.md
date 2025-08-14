@@ -1,11 +1,6 @@
-<<<<<<< HEAD
 # SuvidhaSetu
-=======
-#  UIDAI Toolkit App
 
->>>>>>> fbf223b (Initial commit)
 A React-based dashboard to manage AMC calculations, warranty tracking, and payment summaries. Built with Tailwind CSS, Recharts, Lucide icons, and XLSX export support.
-
 
 ---
 
