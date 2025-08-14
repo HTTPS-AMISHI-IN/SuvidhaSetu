@@ -1,0 +1,111 @@
+LANDING PAGE
+
+
+•	Let the user upload the excel file in the landing page
+•	Save the excel file in global state 1
+•	AMC Calculator and  Warranty Calculator refer to the excel file in global state one and generate their data when the user clicks on the cards on the landing page
+•	After generating the data by both the warranty calculator and amc calculator- that is saved in global state 2 and global state 3 respectively
+•	Global state 1 (data from amc calculator is here) that is referenced by AMC Payment Tracker
+•	Global State 2 (data from warranty calculator here) that is referenced by the Warranty Payment Tracker to generate its data
+
+AMC REQUIREMENTS
+
+INPUT: 
+ Excel Upload (100+ Rows):
+•	Each row represents a product with:
+o	Item Name
+o	Invoice Value (total cost)
+o	Quantity of item ((just stays there – no need for calculation)
+o	ROI in form of array [0.2,0.225,0.275,0.30]- this is currently the challenge- since we don’t want user to take the pain of editing the file and inserting this col- ideally user should upload the file and then it should be processed using this roi only by default without user needing to upload that
+o	UAT Date [User Acceptance Date]- This is also used to calculate the AMC -AMC start date is exactly 3 yr after the UAT DATE
+o	Location- is different for different items
+• AMC Calculation Logic:
+•	AMC = 40% of cost
+•	Spread over 4 years, paid quarterly.
+•	Each year has different Rate of Interest (ROI):
+o	Year 1: 20%
+o	Year 2: 22.5%
+o	Year 3: 27.5%
+o	Year 4: 30%
+•	GST = 18%
+•  Quarter Definitions:
+•	Q1: JFM (Jan–Mar)(5Jan to 4 April) 90 days(non -leap year)/91 days Leap Year
+•	Q2: AMJ (Apr–Jun)(5Apr to 4 July ) 91 days
+•	Q3: JAS (Jul–Sep)(5 July – 4 oct)92 days
+•	Q4: OND (Oct–Dec)(5 oct- 4 Jan) 92 Days
+•  AMC Start Date:
+•	Begins exactly 3 years after the UAT Date.
+•  Prorated Quarterly Split:
+•	If AMC starts mid-quarter, payment for that quarter is prorated.
+•	Year-end transitions (when entire amc for one year is completed- eg; if amc duration 18 oct’24 -17 oct’25; next yar roi will start from 18 oct’25 ) require interest split across years.
+•  Location Filter:
+•	Products are tagged by Location.
+•	Dashboard supports filtering by single location or all.
+•  Quarter-wise Output:
+•	Each product has a schedule for every quarter across 4 years. (4 * 4 =16 Quarters)
+•	Each quarter's:
+o	Base AMC
+o	Interest
+o	GST
+o	Total due
+•  Visual Output:
+•	Quarter summaries with total AMC due
+•	Colored quarterly boxes
+•	Total AMC summaries per year and quarter
+•	UAT date display
+•  Export to Excel:
+•	Excel includes:
+o	All rows, quarterly breakdown, formulas
+o	Proper formatting and colour coding
+o	UAT Date included in file (for reference
+What I need-
+o	By default, the ROI should be processed as 20%,22.5%,27.5%,30%
+o	Currently this is for 4 years only but it could go beyond 4 years- so allow user to add the ROI beyond 4 years – Let the user enter the percentage of ROI if it goes beyond 4 years.
+o	Let it be the case that by default it should be for 4 years but if user wants it could extend upto max 10 years – and let the user add the Roi respectively and then let the user generate the data – and export the file
+o	So, the logic goes like-on the UAT DATE-Warranty Starts- it goes till 3 years- and after the 3 years AMC starts. So, add the check where you ask the user if Warranty Starts on the UAT date- if yes then proceed – else ask the user to enter the warranty start date – and then proceed with the same logic i.e.- warranty start date +3 years is the AMC Start Date
+o	Let the user view for every product how two amounts of a particular quarter where Different year roi is overlapping is calculated
+o	Show quarter wise totals
+o	Make it visually pleasing by adding graphs-pie chart 
+o	Filter using Different ROI value, Location, item name
+o	Export to excel functionality where- in one single excel file the AMC Schedule is exported, along with the splitwise for every product in the  same file but next excel sheet
+o	If possible beautify the excel file also
+o	Along , with the automatic processing of the data when file is uploaded- allow the user to -also add the product manually and calculate the AMC schedule- same include min Roi years (4) maximum allow it to 10
+o	Render  the schedule of every product in one row only
+o	When rendering on the UI use pagination of react to only render 10  products at once on the ui but if at any point user wants to export the excel data that xcel file has the complete data 
+o	 
+
+
+
+
+WARRANTY CALCULATOR
+•	This refers to the excel file uploaded in the global state and then does processing
+•	The calculator splits the total warranty duration into quarter-wise parts, calculating how many days of warranty fall into each predefined quarter based on the product's UAT date. It uses date overlap logic to ensure precise and fair calculation, regardless of when the warranty starts or ends.
+•	QUARTERS DIVISON – SAME AS AMC CALCULATION
+•	TOTAL WARRANTY COST –  15% of the total invoice value that has to be paid in 3 years for a particular product- there is no overlapping logic here 15% of invoice value I divided by 12 for 3 years and then is rendered. Except for the first quarter
+•	Add a check here also – to ask the user if the warranty starts in the uat date- if not then ask him to enter it- and then perform you logic taking the Warranty start date entered by the user as start point.
+•	Allow export to excel functionality
+•	Filters 
+•	Also an option if the user wants to upload the data manually and then wants to calculate the data
+•	Visuals for understanding
+•	Sav this entire thing into the global state 3 -for it to be later referred by the Warranty Payment Tracker
+•	When rendering on the UI use pagination of react to only render 10  products at once on the ui but if at any point user wants to export the excel data that excel file has the complete data 
+
+
+
+AMC PAYMENT TRACKER
+
+•	After taking context from the global state 2- it renders the data in the UI – for every product- the data is in the same row rendered- so basically its displaying the entire excel file that was generated by the amc calculator
+•	Show paid ,pending , due respectively 
+•	Let the user mark-paid – in a check box 
+•	Dynamically calculate out of total how much amount is left to be paid for a particular quarter
+•	Persist the states
+•	Let the user see the visuals of how much is paid, pending overdue- in form pf graph or pie chart
+•	Additionally allow the user to add notes respectively to a particular quarter
+•	At the last, allow the user to export the data with paid, pending and overdue marked
+•	Important;- There could be a case where the user has to upload an excel file that has been previously marked with paid, pending and overdue
+Handle this case-
+Add a option which prompts the user – if the user wants to refer to the the data stored in global state 2
+Or if a if a user wants to upload the excel file that has been previously marked- if that’s the case then make the logic work in the same way-
+Render that excel file in the ui and allow the user to interact with the excel file and port it at the end
+
+**DO THE SAME FOR WARRANTY TRACKER – REFERING THE GLOBAL STATE 3- AND PERFORMING THE EXACT SAME LOGIC AS STATED ABOVE FORM AMC PAYMENT TRACKER**
