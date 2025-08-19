@@ -1193,7 +1193,6 @@ const ExportControls = () => {
   );
 };
 
-
   return (
     <div style={containerStyle}>
       <div style={backgroundOverlayStyle}></div>
@@ -2735,8 +2734,7 @@ const ExportControls = () => {
     </div>
   </div>
 )}
-
-    </div>
+  </div>
   )};
 
 export default AmcPaymentTracker;
