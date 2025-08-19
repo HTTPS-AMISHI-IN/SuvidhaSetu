@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Upload, Plus, FileText, ArrowLeft, Calculator, Package, CheckCircle, AlertCircle, Trash2 } from "lucide-react";
+import { Upload, Plus, FileText, ArrowLeft, Calculator, Package, CheckCircle, AlertCircle, Trash2, Download, FileSpreadsheet, Database } from "lucide-react";
 import * as XLSX from "xlsx";
 import VirtualDataTable from "../components/VirtualDataTable";
-import WarrantyChartsView from "../components/WarrantyChartsView";
 import { storeWarrantyCalculations } from "../store/slice/warrantyDataSlice";
 import { selectExcelData, selectFileName, selectHasData, selectActiveSheet } from "../store/selectors/excelSelectors";
-import CacheManager from "../components/CacheManager";
+import { WarrantyExportManager } from '../utils/exportUtils';
 
 const spinKeyframes = `
   @keyframes spin {
@@ -874,6 +873,175 @@ const spinKeyframes = `
       }
     }, [calculatedSchedule, showGST]);
 
+  // Warranty Export Component
+const WarrantyExportControls = () => {
+  const [showExportOptions, setShowExportOptions] = useState(false);
+
+  const handleExport = useCallback(async (type) => {
+    if (!calculatedSchedule || calculatedSchedule.length === 0) {
+      alert('Please calculate warranty schedule first before exporting.');
+      return;
+    }
+
+    try {
+      const exportManager = new WarrantyExportManager({
+        products: warrantyProducts,
+        schedule: calculatedSchedule,
+        paidQuarters,
+        settings: { gstRate: 0.18 }
+      });
+
+      const baseFilename = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'Warranty_Schedule';
+
+      switch (type) {
+        case 'excel':
+          await exportManager.exportToExcel(baseFilename);
+          break;
+        case 'csv':
+          exportManager.exportToCSV(baseFilename);
+          break;
+        case 'pdf':
+          exportManager.exportToPDF(`${baseFilename}_Report`);
+          break;
+        case 'json':
+          exportManager.exportToJSON(`${baseFilename}_Data`);
+          break;
+        default:
+          break;
+      }
+
+      setShowExportOptions(false);
+    } catch (error) {
+      alert(`Error exporting to ${type.toUpperCase()}. Please try again.`);
+      console.error('Export error:', error);
+    }
+  }, [warrantyProducts, calculatedSchedule, paidQuarters, fileName]);
+
+  const hasCalculations = calculatedSchedule && calculatedSchedule.length > 0;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setShowExportOptions(!showExportOptions)}
+        disabled={!hasCalculations}
+        style={{
+          ...styles.button,
+          ...styles.primaryButton,
+          opacity: hasCalculations ? 1 : 0.5,
+          cursor: hasCalculations ? 'pointer' : 'not-allowed',
+        }}
+      >
+        <Download size={16} />
+        Export Data
+      </button>
+
+      {showExportOptions && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            backgroundColor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+            minWidth: '200px',
+            marginTop: '8px',
+          }}
+        >
+          <div style={{ padding: '8px 0' }}>
+            <button
+              onClick={() => handleExport('excel')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileSpreadsheet size={16} color="#059669" />
+              Export to Excel
+            </button>
+            
+            <button
+              onClick={() => handleExport('csv')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#3b82f6" />
+              Export to CSV
+            </button>
+            
+            <button
+              onClick={() => handleExport('pdf')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileText size={16} color="#dc2626" />
+              Export to PDF
+            </button>
+            
+            <button
+              onClick={() => handleExport('json')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#8b5cf6" />
+              Export to JSON
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
   // Remove product
   const removeProduct = useCallback((productId) => {
     setWarrantyProducts((prev) => prev.filter((p) => p.id !== productId));
@@ -1714,6 +1882,7 @@ const spinKeyframes = `
                     )}
                   </button>
                 )}
+                <WarrantyExportControls />
               </div>
             </div>
 
