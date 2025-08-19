@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSelector} from "react-redux";
 import { useNavigate } from "react-router-dom";
 import VirtualDataTable from "../components/VirtualDataTable";
-import QuarterlyDataTable from "../components/QuarterlyDataTable";
 import CalculationProgress from "../components/CalculationProgress";
 import CacheManager from "../components/CacheManager";
-import AMCChartsView from "../components/AMCChartsView";
 import { useAMCCalculationWorker } from "../hooks/useWebWorker";
 import { useAMCCache } from "../hooks/useCalculationCache";
 import { Upload, Plus, FileText, ArrowLeft, Calculator, Package, CheckCircle, AlertCircle, Trash2, AlignCenter } from "lucide-react";
+import { AMCExportManager } from '../utils/exportUtils';
+import { Download, FileSpreadsheet, Database } from 'lucide-react';
 
 // Import Redux
 import {
@@ -1038,6 +1038,162 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
     zIndex: 1,
   };
 
+  // Export Component
+const ExportControls = () => {
+  const [showExportOptions, setShowExportOptions] = useState(false);
+
+  const handleExport = (type) => {
+    if (!hasCalculations) {
+      alert('Please calculate AMC schedule first before exporting.');
+      return;
+    }
+
+    const exporter = new AMCExportManager(filteredResults, settings, paidQuarters);
+    const baseFilename = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'AMC_Schedule';
+
+    switch (type) {
+      case 'excel':
+        exporter.exportToExcel(baseFilename);
+        break;
+      case 'csv':
+        exporter.exportToCSV(baseFilename);
+        break;
+      case 'pdf':
+        exporter.exportToPDF(baseFilename);
+        break;
+      case 'json':
+        exporter.exportToJSON(baseFilename);
+        break;
+      default:
+        break;
+    }
+
+    setShowExportOptions(false);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setShowExportOptions(!showExportOptions)}
+        disabled={!hasCalculations}
+        style={{
+          ...styles.button,
+          ...styles.primaryButton,
+          opacity: hasCalculations ? 1 : 0.5,
+          cursor: hasCalculations ? 'pointer' : 'not-allowed',
+        }}
+      >
+        <Download size={16} />
+        Export Data
+      </button>
+
+      {showExportOptions && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            backgroundColor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+            minWidth: '200px',
+            marginTop: '8px',
+          }}
+        >
+          <div style={{ padding: '8px 0' }}>
+            <button
+              onClick={() => handleExport('excel')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileSpreadsheet size={16} color="#059669" />
+              Export to Excel
+            </button>
+            
+            <button
+              onClick={() => handleExport('csv')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#3b82f6" />
+              Export to CSV
+            </button>
+            
+            <button
+              onClick={() => handleExport('pdf')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileText size={16} color="#dc2626" />
+              Export to PDF
+            </button>
+            
+            <button
+              onClick={() => handleExport('json')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#8b5cf6" />
+              Export to JSON
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
   return (
     <div style={containerStyle}>
       <div style={backgroundOverlayStyle}></div>
@@ -1351,34 +1507,6 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
               gap: "16px",
             }}
           >
-
-            {hasCachedResult && (
-              <div
-                style={{
-                  padding: "16px",
-                  backgroundColor: "#fef3c7",
-                  border: "1px solid #fcd34d",
-                  borderRadius: "12px",
-                }}
-              >
-                <div style={{ fontSize: "1.5rem", marginBottom: "8px" }}>
-                  ⚡
-                </div>
-                <h4
-                  style={{
-                    fontSize: "0.9rem",
-                    fontWeight: 600,
-                    marginBottom: "4px",
-                    color: "#1e293b",
-                  }}
-                >
-                  Cache Status
-                </h4>
-                <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0 }}>
-                  Results available from cache
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -2132,6 +2260,8 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
           >
             Table View
           </button>
+          
+        <ExportControls />
         </div>
       )}
     </div>
