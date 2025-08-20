@@ -32,11 +32,13 @@ npm install
 
 npm install lucide-react
 npm install xlsx
+npm install xlsx file-saver
+npm install xlsx jspdf jspdf-autotable    
+npm install exceljs
 npm install recharts
 npm install react-router-dom
 npm install -D @tailwindcss/postcss
 npm install antd @ant-design/icons react-window react-window-infinite-loader web-vitals
-npm install xlsx jspdf jspdf-autotable    
-npm install exceljs
+
 #To Start the development server
 npm start
