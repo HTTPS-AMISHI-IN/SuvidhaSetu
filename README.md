@@ -26,7 +26,7 @@ Ensure the following are installed in your system:
 ## Run
 Download the zip or clone via https://github.com/HTTPS-AMISHI-IN/SuvidhaSetu.git
 
-### Install the following in terminal or command prompt
+### Install the following in terminal, make sure your path is directed towards this folder
 ```bash
 npm install
 
@@ -36,5 +36,5 @@ npm install recharts
 npm install react-router-dom
 npm install -D @tailwindcss/postcss
 
-### To Start the development server
+#To Start the development server
 npm start
