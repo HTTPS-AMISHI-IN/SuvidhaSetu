@@ -26,7 +26,7 @@ Ensure the following are installed in your system:
 ## Run
 Download the zip or clone via https://github.com/HTTPS-AMISHI-IN/SuvidhaSetu.git
 
-### Install the following in terminal, make sure your path is directed towards this folder
+### Install the following in terminal, the path should be your project directory
 ```bash
 npm install
 
@@ -37,6 +37,6 @@ npm install react-router-dom
 npm install -D @tailwindcss/postcss
 npm install antd @ant-design/icons react-window react-window-infinite-loader web-vitals
 npm install xlsx jspdf jspdf-autotable    
-
+npm install exceljs
 #To Start the development server
 npm start
