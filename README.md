@@ -26,7 +26,7 @@ Ensure the following are installed in your system:
 ## Run
 Download the zip or clone via https://github.com/HTTPS-AMISHI-IN/SuvidhaSetu.git
 
-###Install the following in terminal or command prompt
+### Install the following in terminal or command prompt
 ```bash
 npm install
 
