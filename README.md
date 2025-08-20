@@ -15,7 +15,6 @@ A React-based dashboard to manage AMC calculations, warranty tracking, and payme
 ---
 
 ##  Prerequisites
-
 Ensure the following are installed in your system:
 
 - Node.js (v16+ recommended)
@@ -27,6 +26,7 @@ Ensure the following are installed in your system:
 ## Run
 Download the zip or clone via https://github.com/HTTPS-AMISHI-IN/SuvidhaSetu.git
 
+###Install the following in terminal or command prompt
 ```bash
 npm install
 
@@ -36,5 +36,5 @@ npm install recharts
 npm install react-router-dom
 npm install -D @tailwindcss/postcss
 
-# 5️⃣ Start the development server
+### To Start the development server
 npm start
