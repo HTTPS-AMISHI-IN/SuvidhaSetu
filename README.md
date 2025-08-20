@@ -35,6 +35,8 @@ npm install xlsx
 npm install recharts
 npm install react-router-dom
 npm install -D @tailwindcss/postcss
+npm install antd @ant-design/icons react-window react-window-infinite-loader web-vitals
+npm install xlsx jspdf jspdf-autotable    
 
 #To Start the development server
 npm start
