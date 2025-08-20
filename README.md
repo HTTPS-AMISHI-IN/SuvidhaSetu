@@ -33,7 +33,7 @@ npm install
 npm install lucide-react
 npm install xlsx
 npm install xlsx file-saver
-npm install xlsx jspdf jspdf-autotable    
+npm install jspdf jspdf-autotable
 npm install exceljs
 npm install recharts
 npm install react-router-dom
