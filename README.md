@@ -1,11 +1,6 @@
-<<<<<<< HEAD
 # SuvidhaSetu
-=======
-#  UIDAI Toolkit App
 
->>>>>>> fbf223b (Initial commit)
 A React-based dashboard to manage AMC calculations, warranty tracking, and payment summaries. Built with Tailwind CSS, Recharts, Lucide icons, and XLSX export support.
-
 
 ---
 
@@ -20,33 +15,30 @@ A React-based dashboard to manage AMC calculations, warranty tracking, and payme
 ---
 
 ##  Prerequisites
-
 Ensure the following are installed in your system:
 
 - Node.js (v16+ recommended)
-- npm or yarn
+- npm
 - Git
 
 ---
 
-##  Steps to Clone & Run
+## Run
+Download the zip or clone via https://github.com/HTTPS-AMISHI-IN/SuvidhaSetu.git
 
+### Install the following in terminal, the path should be your project directory
 ```bash
-# 1️⃣ Clone the repo
-git clone https://github.com/manyaa1/Toolkit-UIDAI.git
-
-# 2️⃣ Navigate to project directory
-
-
-# 3️⃣ Install dependencies
 npm install
 
-# 4️⃣ Install required packages individually if needed
 npm install lucide-react
 npm install xlsx
+npm install xlsx file-saver
+npm install jspdf jspdf-autotable
+npm install exceljs
 npm install recharts
 npm install react-router-dom
 npm install -D @tailwindcss/postcss
+npm install antd @ant-design/icons react-window react-window-infinite-loader web-vitals
 
-# 5️⃣ Start the development server
+#To Start the development server
 npm start
