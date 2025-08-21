@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Upload, Plus, FileText, ArrowLeft, Calculator, Package, CheckCircle, AlertCircle, Trash2 } from "lucide-react";
+import { Upload, Plus, FileText, ArrowLeft, Calculator, Package, CheckCircle, AlertCircle, Trash2, Download, FileSpreadsheet, Database } from "lucide-react";
 import * as XLSX from "xlsx";
 import VirtualDataTable from "../components/VirtualDataTable";
-import WarrantyChartsView from "../components/WarrantyChartsView";
 import { storeWarrantyCalculations } from "../store/slice/warrantyDataSlice";
 import { selectExcelData, selectFileName, selectHasData, selectActiveSheet } from "../store/selectors/excelSelectors";
-import CacheManager from "../components/CacheManager";
+import { WarrantyExportManager } from '../utils/exportUtils';
 
 const spinKeyframes = `
   @keyframes spin {
@@ -122,7 +121,8 @@ const spinKeyframes = `
   const [warrantyProducts, setWarrantyProducts] = useState([]);
   const [manualProduct, setManualProduct] = useState({
     itemName: "",
-    cost: "",
+    invoiceValue: "",
+    invoiceNumber: "",
     quantity: 1,
     uatDate: new Date().toISOString().split("T")[0],
     warrantyStart: "",
@@ -143,11 +143,11 @@ const spinKeyframes = `
   }, []);
 
   const calculateWarrantySchedule = useCallback(
-    (startDate, cost, gstRate = 0.18, warrantyPercent = 0.15, years = 3) => {
+    (startDate, invoiceValue, gstRate = 0.18, warrantyPercent = 0.15, years = 3) => {
       const schedule = new Map();
       const splitDetails = new Map();
 
-      const totalWarrantyAmount = cost * warrantyPercent;
+      const totalWarrantyAmount = invoiceValue * warrantyPercent;
       const quarterlyAmount = totalWarrantyAmount / (years * 4); 
 
       const warrantyEnd = new Date(startDate);
@@ -320,7 +320,7 @@ const spinKeyframes = `
           row["Product Name"] ||
           row["productName"] ||
           `Product ${index + 1}`;
-        const cost = (() => {
+        const invoiceValue = (() => {
           let costStr = String(
             row["Cost"] ||
               row["cost"] ||
@@ -330,7 +330,6 @@ const spinKeyframes = `
               row["invoiceValue"] ||
               0
           );
-          // Check for unit indicators before cleaning
           const originalStr = costStr.toLowerCase();
           const isCrores =
             originalStr.includes("cr") || originalStr.includes("crore");
@@ -355,6 +354,10 @@ const spinKeyframes = `
 
           return parsed;
         })();
+
+        const invoiceNumber = String(
+            row["Invoice Number"] || row["invoiceNumber"] || row["Invoice No"] || row["Invoice No."] || ''
+        )
         const quantity = parseInt(row["Quantity"] || row["quantity"] || row["Qty"] ||row["qty"] ||  1);
      
         const uatDate = parseExcelDate(
@@ -376,7 +379,8 @@ const spinKeyframes = `
         return {
           id: `excel-${index}`,
           itemName,
-          cost,
+          invoiceValue,
+          invoiceNumber,
           quantity,
           uatDate,  
           warrantyStart,  
@@ -400,7 +404,7 @@ const spinKeyframes = `
 
   // Add manual product
   const addManualProduct = useCallback(() => {
-    if (!manualProduct.itemName || !manualProduct.cost) {
+    if (!manualProduct.itemName || !manualProduct.invoiceValue) {
       alert("Please fill in required fields: Item Name and Cost");
       return;
     }
@@ -410,7 +414,7 @@ const spinKeyframes = `
       : manualProduct.warrantyStart || manualProduct.uatDate;
 
     const processedCost = (() => {
-      let costStr = String(manualProduct.cost || 0);
+      let costStr = String(manualProduct.invoiceValue || 0);
       const originalStr = costStr.toLowerCase();
       const isCrores =
         originalStr.includes("cr") || originalStr.includes("crore");
@@ -440,7 +444,8 @@ const spinKeyframes = `
     const newProduct = {
       id: `manual-${Date.now()}`,
       itemName: manualProduct.itemName,
-      cost: processedCost,
+      invoiceValue: processedCost,
+      invoiceNumber: manualProduct.invoiceNumber,
       quantity: parseInt(manualProduct.quantity),
       uatDate: manualProduct.uatDate,
       warrantyStart: warrantyStartDate,
@@ -453,7 +458,8 @@ const spinKeyframes = `
 
     setManualProduct({
       itemName: "",
-      cost: "",
+      invoiceValue: "",
+      invoiceNumber: "",
       quantity: 1,
       uatDate: new Date().toISOString().split("T")[0],
       warrantyStart: "",
@@ -482,10 +488,16 @@ const spinKeyframes = `
         width: 120,
       },
       {
-        key: "cost",
-        title: "Cost",
+        key: "invoiceValue",
+        title: "Invoice Value",
         width: 120,
         className: "text-right",
+      },
+      {
+        key: "invoiceNumber",
+        title: "Invoice Number",
+        width: 180,
+        className: "text-left",
       },
       {
         key: "quantity",
@@ -558,7 +570,8 @@ const spinKeyframes = `
 
   const warrantyFormatters = useMemo(() => {
     const formatters = {
-      cost: (value) => (value ? `₹${value.toLocaleString()}` : "₹0"),
+      invoiceValue: (value) => (value ? `₹${value.toLocaleString()}` : "₹0"),
+      invoiceNumber: (value) => value || "-",
       quantity: (value) => value?.toLocaleString() || "0",
       uatDate: (value) => value || "-",
       warrantyStart: (value) => value || "-",
@@ -629,7 +642,7 @@ const spinKeyframes = `
         
         warrantyProducts.forEach((product) => {
           const warrantyStart = new Date(product.warrantyStart);
-          const totalCost = product.cost;
+          const totalCost = product.invoiceValue;
 
           const { schedule } = calculateWarrantySchedule(
             warrantyStart,
@@ -643,7 +656,8 @@ const spinKeyframes = `
             itemName: product.itemName,
             uatDate: new Date(product.uatDate).toLocaleDateString("en-GB"),
             warrantyStart: warrantyStart.toLocaleDateString("en-GB"),
-            cost: product.cost,
+            invoiceValue: product.invoiceValue,
+            invoiceNumber: product.invoiceNumber || "",
             quantity: product.quantity,
             location: product.location,
             source: product.source,
@@ -693,7 +707,7 @@ const spinKeyframes = `
           itemName: "Grand Total",
           uatDate: "",
           warrantyStart: "",
-          cost: "",
+          invoiceValue: "",
           quantity: "",
           location: "",
           source: "",
@@ -810,7 +824,7 @@ const spinKeyframes = `
         });
 
         // Define the correct column order for export
-        const baseColumns = ["Item Name", "UAT Date", "Warranty Start", "Cost", "Quantity", "Location"];
+        const baseColumns = ["Item Name", "UAT Date", "Warranty Start", "Invoice Value", "Quantity", "Location"];
         const orderedColumns = [...baseColumns, ...sortedQuarters, ...Array.from(totalColumns)];
 
         // Transform data with proper column ordering
@@ -821,7 +835,8 @@ const spinKeyframes = `
           transformedRow["Item Name"] = row.itemName;
           transformedRow["UAT Date"] = row.uatDate;
           transformedRow["Warranty Start"] = row.warrantyStart;
-          transformedRow["Cost"] = row.cost ? `₹${row.cost.toLocaleString()}` : "";
+          transformedRow["Invoice Value"] = row.invoiceValue ? `₹${row.invoiceValue.toLocaleString()}` : "";
+          transformedRow["Invoice Number"] = row.invoiceNumber || ""; 
           transformedRow["Quantity"] = row.quantity || "";
           transformedRow["Location"] = row.location || "";
           
@@ -873,6 +888,175 @@ const spinKeyframes = `
         alert("Error exporting to Excel. Please try again.");
       }
     }, [calculatedSchedule, showGST]);
+
+  // Warranty Export Component
+const WarrantyExportControls = () => {
+  const [showExportOptions, setShowExportOptions] = useState(false);
+
+  const handleExport = useCallback(async (type) => {
+    if (!calculatedSchedule || calculatedSchedule.length === 0) {
+      alert('Please calculate warranty schedule first before exporting.');
+      return;
+    }
+
+    try {
+      const exportManager = new WarrantyExportManager({
+        products: warrantyProducts,
+        schedule: calculatedSchedule,
+        paidQuarters,
+        settings: { gstRate: 0.18 }
+      });
+
+      const baseFilename = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'Warranty_Schedule';
+
+      switch (type) {
+        case 'excel':
+          await exportManager.exportToExcel(baseFilename);
+          break;
+        case 'csv':
+          exportManager.exportToCSV(baseFilename);
+          break;
+        case 'pdf':
+          exportManager.exportToPDF(`${baseFilename}_Report`);
+          break;
+        case 'json':
+          exportManager.exportToJSON(`${baseFilename}_Data`);
+          break;
+        default:
+          break;
+      }
+
+      setShowExportOptions(false);
+    } catch (error) {
+      alert(`Error exporting to ${type.toUpperCase()}. Please try again.`);
+      console.error('Export error:', error);
+    }
+  }, [warrantyProducts, calculatedSchedule, paidQuarters, fileName]);
+
+  const hasCalculations = calculatedSchedule && calculatedSchedule.length > 0;
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setShowExportOptions(!showExportOptions)}
+        disabled={!hasCalculations}
+        style={{
+          ...styles.button,
+          ...styles.primaryButton,
+          opacity: hasCalculations ? 1 : 0.5,
+          cursor: hasCalculations ? 'pointer' : 'not-allowed',
+        }}
+      >
+        <Download size={16} />
+        Export Data
+      </button>
+
+      {showExportOptions && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            backgroundColor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+            minWidth: '200px',
+            marginTop: '8px',
+          }}
+        >
+          <div style={{ padding: '8px 0' }}>
+            <button
+              onClick={() => handleExport('excel')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileSpreadsheet size={16} color="#059669" />
+              Export to Excel
+            </button>
+            
+            <button
+              onClick={() => handleExport('csv')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#3b82f6" />
+              Export to CSV
+            </button>
+            
+            <button
+              onClick={() => handleExport('pdf')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileText size={16} color="#dc2626" />
+              Export to PDF
+            </button>
+            
+            <button
+              onClick={() => handleExport('json')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#8b5cf6" />
+              Export to JSON
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 
   // Remove product
   const removeProduct = useCallback((productId) => {
@@ -996,6 +1180,7 @@ const spinKeyframes = `
         else if (isLakhs) parsed = parsed * 100000;
         return parsed;
       })(),
+      invoiceNumber: String(row["Invoice Number"] || row["invoiceNumber"] || row["Invoice No"] || row["Invoice No."] || ''),
       quantity: parseInt(row["Quantity"] || row["quantity"] || row["Qty"] || 1),
       location: row["Location"] || row["location"] || "Default Location",
       uatDate: parseExcelDate(row["UAT Date"] || row["uatDate"] || row["Purchase Date"])
@@ -1139,7 +1324,7 @@ const spinKeyframes = `
                         textAlign: "right",
                       }}
                     >
-                      Cost (Parsed)
+                      Invoice Value
                     </th>
                     <th
                       style={{
@@ -1203,6 +1388,7 @@ const spinKeyframes = `
                           </span>
                         )}
                       </td>
+
                       <td
                         style={{
                           padding: "8px",
@@ -1462,20 +1648,35 @@ const spinKeyframes = `
                 />
               </div>
               <div>
-                <label style={styles.label}>Cost (₹) *</label>
+                <label style={styles.label}>Invoice Value (₹) *</label>
                 <input
                   type="text"
-                  value={manualProduct.cost}
+                  value={manualProduct.invoiceValue}
                   onChange={(e) =>
                     setManualProduct((prev) => ({
                       ...prev,
-                      cost: e.target.value,
+                      invoiceValue: e.target.value,
                     }))
                   }
                   placeholder="e.g., 2.5 Cr, 50 Lakhs, or 2500000"
                   style={styles.input}
                 />
               </div>
+              <div>
+                <label style={styles.label}>Invoice Number</label>
+  <input
+    type="text"
+    value={manualProduct.invoiceNumber}
+    onChange={(e) =>
+      setManualProduct((prev) => ({
+        ...prev,
+        invoiceNumber: e.target.value,
+      }))
+    }
+    placeholder="Enter invoice number"
+    style={styles.input}
+  />
+</div>
               <div>
                 <label style={styles.label}>Quantity</label>
                 <input
@@ -1628,7 +1829,7 @@ const spinKeyframes = `
                             fontSize: "0.875rem",
                           }}
                         >
-                          ₹{product.cost.toLocaleString()} • Qty:{" "}
+                          ₹{product.invoiceValue.toLocaleString()} • Qty:{" "}
                           {product.quantity} • {product.warrantyYears} years •{" "}
                           {product.source}
                         </div>
@@ -1714,6 +1915,7 @@ const spinKeyframes = `
                     )}
                   </button>
                 )}
+                <WarrantyExportControls />
               </div>
             </div>
 

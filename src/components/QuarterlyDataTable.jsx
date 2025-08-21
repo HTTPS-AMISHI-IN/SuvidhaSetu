@@ -192,7 +192,7 @@ const QuarterlyDataTable = ({
   const fixedColumns = [
     { key: "uatDate", title: "UAT Date", width: 120 },
     { key: "productName", title: "Product Name", width: 200 },
-    { key: "location", title: "Location", width: 150 },
+    { key: "location", title: "Location", width: 130 },
     { key: "invoiceValue", title: "Invoice Value", width: 130 },
     { key: "quantity", title: "Quantity", width: 100 },
   ];

@@ -1,22 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import {
-  Calendar,
-  Upload,
-  Download,
-  Plus,
-  MapPin,
-  DollarSign,
-  FileText,
-  ArrowLeft,
-  Calculator,
-  Package,
-  CheckCircle,
-  AlertCircle,
-  Trash2,
-  Settings,
-} from "lucide-react";
+import {  Calendar,  Upload,  Download, Plus,  MapPin,  DollarSign,  FileText,  ArrowLeft,  Calculator,  Package, CheckCircle,  AlertCircle,  Trash2, Settings, } from "lucide-react";
 import * as XLSX from "xlsx";
 import VirtualDataTable from "../components/VirtualDataTable";
 import WarrantyChartsView from "../components/WarrantyChartsView";
@@ -119,6 +104,7 @@ const spinKeyframes = `
   const [manualProduct, setManualProduct] = useState({
     itemName: "",
     cost: "",
+    invoiceNumber: "",
     quantity: 1,
     uatDate: new Date().toISOString().split("T")[0],
     warrantyStart: "",
@@ -371,6 +357,9 @@ const spinKeyframes = `
 
           return parsed;
         })();
+        const invoiceNumber = String( row["Invoice Number"] || row["invoiceNumber"] ||
+          row["Invoice No"] || row["Invoice No."] || ''
+        )
         const quantity = parseInt(row["Quantity"] || row["quantity"] || row["Qty"] ||row["qty"] ||  1);
      
         const uatDate = parseExcelDate(
@@ -393,6 +382,7 @@ const spinKeyframes = `
           id: `excel-${index}`,
           itemName,
           cost,
+          invoiceNumber,
           quantity,
           uatDate,  
           warrantyStart,  
@@ -432,8 +422,6 @@ const spinKeyframes = `
         originalStr.includes("cr") || originalStr.includes("crore");
       const isLakhs =
         originalStr.includes("lakh") || originalStr.includes("lac");
-
-      
       costStr = costStr
         .replace(/[₹$,\s]/g, "") 
         .replace(/\.00$/, "") 
@@ -442,8 +430,6 @@ const spinKeyframes = `
         .trim();
 
       let parsed = parseFloat(costStr || 0);
-
-      
       if (isCrores) {
         parsed = parsed * 10000000; 
       } else if (isLakhs) {
@@ -457,6 +443,7 @@ const spinKeyframes = `
       id: `manual-${Date.now()}`,
       itemName: manualProduct.itemName,
       cost: processedCost,
+      invoiceNumber: manualProduct.invoiceNumber,
       quantity: parseInt(manualProduct.quantity),
       uatDate: manualProduct.uatDate,
       warrantyStart: warrantyStartDate,
@@ -470,6 +457,7 @@ const spinKeyframes = `
     setManualProduct({
       itemName: "",
       cost: "",
+      invoiceNumber:"",
       quantity: 1,
       uatDate: new Date().toISOString().split("T")[0],
       warrantyStart: "",
@@ -500,6 +488,12 @@ const spinKeyframes = `
       {
         key: "cost",
         title: "Cost",
+        width: 120,
+        className: "text-right",
+      },
+      {
+        key: "invoiceNumber",
+        title: "Invoice Number",
         width: 120,
         className: "text-right",
       },
@@ -575,6 +569,7 @@ const spinKeyframes = `
   const warrantyFormatters = useMemo(() => {
     const formatters = {
       cost: (value) => (value ? `₹${value.toLocaleString()}` : "₹0"),
+      invoiceNumber: (value) => value || "-", 
       quantity: (value) => value?.toLocaleString() || "0",
       uatDate: (value) => value || "-",
       warrantyStart: (value) => value || "-",
@@ -660,6 +655,7 @@ const spinKeyframes = `
             uatDate: new Date(product.uatDate).toLocaleDateString("en-GB"),
             warrantyStart: warrantyStart.toLocaleDateString("en-GB"),
             cost: product.cost,
+            invoiceNumber: product.invoiceNumber || "",
             quantity: product.quantity,
             location: product.location,
             source: product.source,
@@ -826,7 +822,7 @@ const spinKeyframes = `
         });
 
         // Define the correct column order for export
-        const baseColumns = ["Item Name", "UAT Date", "Warranty Start", "Cost", "Quantity", "Location"];
+        const baseColumns = ["Item Name", "UAT Date", "Warranty Start", "Cost", "Invoice Number", "Quantity", "Location"];
         const orderedColumns = [...baseColumns, ...sortedQuarters, ...Array.from(totalColumns)];
 
         // Transform data with proper column ordering
@@ -838,6 +834,7 @@ const spinKeyframes = `
           transformedRow["UAT Date"] = row.uatDate;
           transformedRow["Warranty Start"] = row.warrantyStart;
           transformedRow["Cost"] = row.cost ? `₹${row.cost.toLocaleString()}` : "";
+          transformedRow["Invoice Number"] = row.invoiceNumber || "";
           transformedRow["Quantity"] = row.quantity || "";
           transformedRow["Location"] = row.location || "";
           
@@ -1429,7 +1426,22 @@ const spinKeyframes = `
                 />
               </div>
               <div>
-                <label style={styles.label}>Cost (₹) *</label>
+    <label style={styles.label}>Invoice Number</label>
+    <input
+      type="text"
+      value={manualProduct.invoiceNumber}
+      onChange={(e) =>
+        setManualProduct((prev) => ({
+          ...prev,
+          invoiceNumber: e.target.value,
+        }))
+      }
+      placeholder="Enter invoice number"
+      style={styles.input}
+    />
+  </div>
+              <div>
+                <label style={styles.label}>Invoice Value (₹) *</label>
                 <input
                   type="text"
                   value={manualProduct.cost}

@@ -2,13 +2,13 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSelector} from "react-redux";
 import { useNavigate } from "react-router-dom";
 import VirtualDataTable from "../components/VirtualDataTable";
-import QuarterlyDataTable from "../components/QuarterlyDataTable";
 import CalculationProgress from "../components/CalculationProgress";
 import CacheManager from "../components/CacheManager";
-import AMCChartsView from "../components/AMCChartsView";
 import { useAMCCalculationWorker } from "../hooks/useWebWorker";
 import { useAMCCache } from "../hooks/useCalculationCache";
-import { Upload, Plus, FileText, ArrowLeft, Calculator, Package, CheckCircle, AlertCircle, Trash2, AlignCenter } from "lucide-react";
+import { Upload, Plus, FileText, ArrowLeft, Calculator, } from "lucide-react";
+import { AMCExportManager } from '../utils/exportUtils';
+import { Download, FileSpreadsheet, Database } from 'lucide-react';
 
 // Import Redux
 import {
@@ -22,18 +22,22 @@ const ManualProductForm = ({ onAddProduct }) => {
   const [formData, setFormData] = useState({
     productName: "",
     invoiceValue: "",
+    invoiceNumber: "",
     quantity: 1,
     location: "",
     uatDate: new Date().toISOString().split("T")[0],
   });
 
   const handleSubmit = () => {
-    const { productName, invoiceValue, quantity, location, uatDate } = formData;
+    const { productName, invoiceValue, invoiceNumber, quantity, location, uatDate } = formData;
 
     if (
       !productName.trim() ||
       !invoiceValue ||
       parseFloat(invoiceValue) <= 0 ||
+      !invoiceNumber.trim() || '',
+      invoiceNumber.length < 5 ||
+      invoiceNumber.length > 20 ||
       !location.trim() ||
       !uatDate
     ) {
@@ -45,6 +49,7 @@ const ManualProductForm = ({ onAddProduct }) => {
       id: `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       productName: productName.trim(),
       invoiceValue: parseFloat(invoiceValue),
+      invoiceNumber: invoiceNumber.trim() || '',
       quantity: parseInt(quantity) || 1,
       location: location.trim(),
       uatDate: uatDate,
@@ -57,6 +62,7 @@ const ManualProductForm = ({ onAddProduct }) => {
     setFormData({
       productName: "",
       invoiceValue: "",
+      invoiceNumber: "",
       quantity: 1,
       location: "",
       uatDate: new Date().toISOString().split("T")[0],
@@ -121,6 +127,35 @@ const ManualProductForm = ({ onAddProduct }) => {
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, invoiceValue: e.target.value }))
             }
+            style={{
+              width: "100%",
+              padding: "8px 12px",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              fontSize: "0.9rem",
+            }}
+          />
+        </div>
+
+        <div>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "8px",
+              fontWeight: 600,
+              color: "#374151",
+            }}
+          >
+            Invoice Number *
+          </label>
+          <input
+            type="text"
+            placeholder="Enter invoice number"
+            value={formData.invoiceNumber}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value.replace(/\D/g, '') })) // Allow only digits
+            }
+            maxLength={20}
             style={{
               width: "100%",
               padding: "8px 12px",
@@ -502,6 +537,12 @@ const excelEpoch = new Date(1900, 0, 1);
             }
             return parsed;
           })(),
+          invoiceNumber: String(
+            row["Invoice Number"] ||
+            row.invoiceNumber ||
+            row["Invoice No"] ||
+            row["Invoice No."] || ''
+          ),
           location: row.Location || row.location || "Unknown",
           //  DATE PARSING 
           uatDate: parseExcelDate(
@@ -580,6 +621,7 @@ const excelEpoch = new Date(1900, 0, 1);
         productName: product.productName,
         location: product.location || "Unknown",
         invoiceValue: product.invoiceValue,
+        invoiceNumber: product.invoiceNumber || '',
         quantity: product.quantity,
         amcStartDate: product.amcStartDate,
         uatDate: product.uatDate,
@@ -797,6 +839,13 @@ const filteredYearTotals = useMemo(() => {
         title: "Cost",
         width: 100,
         className: "text-right",
+      },
+      {
+        key: "invoiceNumber",
+        title: "Invoice Number",
+        width: 150,
+        className: "text-left",
+        formatter: (value, row) => value || "-"
       },
       {
         key: "quantity",
@@ -1038,6 +1087,161 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
     zIndex: 1,
   };
 
+  // Export Component
+const ExportControls = () => {
+  const [showExportOptions, setShowExportOptions] = useState(false);
+
+  const handleExport = (type) => {
+    if (!hasCalculations) {
+      alert('Please calculate AMC schedule first before exporting.');
+      return;
+    }
+
+    const exporter = new AMCExportManager(filteredResults, settings, paidQuarters);
+    const baseFilename = fileName ? fileName.replace(/\.[^/.]+$/, '') : 'AMC_Schedule';
+
+    switch (type) {
+      case 'excel':
+        exporter.exportToExcel(baseFilename);
+        break;
+      case 'csv':
+        exporter.exportToCSV(baseFilename);
+        break;
+      case 'pdf':
+        exporter.exportToPDF(baseFilename);
+        break;
+      case 'json':
+        exporter.exportToJSON(baseFilename);
+        break;
+      default:
+        break;
+    }
+
+    setShowExportOptions(false);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        onClick={() => setShowExportOptions(!showExportOptions)}
+        disabled={!hasCalculations}
+        style={{
+          ...styles.button,
+          ...styles.primaryButton,
+          opacity: hasCalculations ? 1 : 0.5,
+          cursor: hasCalculations ? 'pointer' : 'not-allowed',
+        }}
+      >
+        <Download size={16} />
+        Export Data
+      </button>
+
+      {showExportOptions && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            right: 0,
+            backgroundColor: 'white',
+            border: '1px solid #e2e8f0',
+            borderRadius: '8px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+            zIndex: 1000,
+            minWidth: '200px',
+            marginTop: '8px',
+          }}
+        >
+          <div style={{ padding: '8px 0' }}>
+            <button
+              onClick={() => handleExport('excel')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileSpreadsheet size={16} color="#059669" />
+              Export to Excel
+            </button>
+            
+            <button
+              onClick={() => handleExport('csv')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#3b82f6" />
+              Export to CSV
+            </button>
+            
+            <button
+              onClick={() => handleExport('pdf')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <FileText size={16} color="#dc2626" />
+              Export to PDF
+            </button>
+            
+            <button
+              onClick={() => handleExport('json')}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                backgroundColor: 'transparent',
+                textAlign: 'left',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.875rem',
+              }}
+              onMouseEnter={(e) => e.target.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+            >
+              <Database size={16} color="#8b5cf6" />
+              Export to JSON
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
   return (
     <div style={containerStyle}>
       <div style={backgroundOverlayStyle}></div>
@@ -1209,7 +1413,16 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
                         textAlign: "right",
                       }}
                     >
-                      Cost (Parsed)
+                      Invoice Value
+                    </th>
+                    <th
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #e2e8f0",
+                        textAlign: "left",
+                      }}
+                    >
+                      Invoice Number
                     </th>
                     <th
                       style={{
@@ -1272,6 +1485,11 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
                             (₹{(item.invoiceValue / 10000000).toFixed(2)} Cr)
                           </span>
                         )}
+                      </td>
+                      <td
+                        style={{ padding: "8px", border: "1px solid #e2e8f0" }}
+                        >
+                          {item.invoiceNumber || 'N/A'}
                       </td>
                       <td
                         style={{
@@ -1351,34 +1569,6 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
               gap: "16px",
             }}
           >
-
-            {hasCachedResult && (
-              <div
-                style={{
-                  padding: "16px",
-                  backgroundColor: "#fef3c7",
-                  border: "1px solid #fcd34d",
-                  borderRadius: "12px",
-                }}
-              >
-                <div style={{ fontSize: "1.5rem", marginBottom: "8px" }}>
-                  ⚡
-                </div>
-                <h4
-                  style={{
-                    fontSize: "0.9rem",
-                    fontWeight: 600,
-                    marginBottom: "4px",
-                    color: "#1e293b",
-                  }}
-                >
-                  Cache Status
-                </h4>
-                <p style={{ fontSize: "0.8rem", color: "#64748b", margin: 0 }}>
-                  Results available from cache
-                </p>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -1657,6 +1847,9 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
                     </span>
                     <span style={{ color: "#64748b" }}>
                       ₹{product.invoiceValue.toLocaleString()}
+                    </span>
+                    <span style={{ color: "#64748b" }}>
+                      {product.invoiceNumber || 'N/A'}
                     </span>
                     <span style={{ color: "#64748b" }}>{product.location}</span>
                     <span style={{ color: "#64748b" }}>
@@ -2132,6 +2325,8 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
           >
             Table View
           </button>
+          
+        <ExportControls />
         </div>
       )}
     </div>
@@ -2200,12 +2395,15 @@ const QuarterPaymentCard = ({ quarter, year, totals, showWithoutGST, paidQuarter
                 searchable={true}
                 filterable={true}
                 sortable={true}
+                showTotals={true}
+                showRowTotals={true}
                 summary={{
                   ...currentSummary,
                   totalProducts: filteredResults.length,
                 }}
                 formatters={{
                   invoiceValue: (value) => `₹${value?.toLocaleString() || "0"}`,
+                  invoiceNumber: (value) => value || "-",
                   quantity: (value) => value?.toLocaleString() || "0",
                   amcStartDate: (value) =>
                     value ? new Date(value).toLocaleDateString() : "-",

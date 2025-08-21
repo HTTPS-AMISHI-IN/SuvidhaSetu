@@ -29,7 +29,6 @@ const AMCRow = React.memo(({ index, style, data }) => {
       </div>
     );
   }
-
   const handleRowClick = () => {
     if (onRowClick) {
       onRowClick(item, index);
@@ -51,14 +50,17 @@ const AMCRow = React.memo(({ index, style, data }) => {
         minWidth: `${totalWidth}px`,
         borderBottom: "1px solid #e5e7eb",
         cursor: "pointer",
-        backgroundColor: "white",
+        backgroundColor: item?.id === 'TOTAL_ROW' ? "#f0f9ff" : "white",
+        borderTop: item?.id === 'TOTAL_ROW' ? "2px solid #3b82f6" : "none",
       }}
       onClick={handleRowClick}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "#eff6ff";
+        e.currentTarget.style.backgroundColor = 
+          item?.id === 'TOTAL_ROW' ? "#dbeafe" : "#eff6ff";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "white";
+        e.currentTarget.style.backgroundColor = 
+          item?.id === 'TOTAL_ROW' ? "#f0f9ff" : "white";
       }}
     >
       {visibleColumns.map((column) => {
@@ -66,6 +68,9 @@ const AMCRow = React.memo(({ index, style, data }) => {
         const formattedValue = formatters[column.key]
           ? formatters[column.key](value, item)
           : value || "-";
+
+        const isProductTotalColumn = column.key === 'rowTotal';
+        const isTotalRow = item?.id === 'TOTAL_ROW';
 
         return (
           <div
@@ -87,12 +92,16 @@ const AMCRow = React.memo(({ index, style, data }) => {
                 : column.className?.includes("text-center")
                 ? "center"
                 : "flex-start",
-              fontSize: "0.875rem",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               borderRight: "1px solid #f3f4f6",
               boxSizing: "border-box",
+              backgroundColor: isProductTotalColumn ? 
+                (isTotalRow ? "#bcfd9eff" : "#fff5e6ff") :
+                (column.className?.includes("text-right") ? "inherit" : "inherit"),
+              borderLeft: isProductTotalColumn ? "2px solid #f59e0b" : "none", // Orange border
+              fontWeight: isProductTotalColumn ? "600" : "normal",
             }}
             title={String(formattedValue)} // Tooltip for long text
           >
@@ -129,68 +138,73 @@ const TableHeader = React.memo(({ columns, onSort, sortConfig }) => {
         fontWeight: 600,
       }}
     >
-      {columns.map((column) => (
-        <div
-          key={column.key}
-          style={{
-            width: `${column.width}px`,
-            minWidth: `${column.width}px`,
-            maxWidth: `${column.width}px`,
-            padding: "12px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: column.className?.includes("text-right")
-              ? "flex-end"
-              : column.className?.includes("text-center")
-              ? "center"
-              : "flex-start",
-            cursor: "pointer",
-            userSelect: "none",
-            fontSize: "0.875rem",
-            borderRight: "1px solid #e5e7eb",
-            transition: "background-color 0.2s ease",
-            boxSizing: "border-box",
-          }}
-          onClick={() => onSort && onSort(column.key)}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#e5e7eb";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "#f3f4f6";
-          }}
-        >
+      {columns.map((column) => {
+        const isProductTotalColumn = column.key === 'rowTotal';
+        
+        return (
           <div
+            key={column.key}
             style={{
+              width: `${column.width}px`,
+              minWidth: `${column.width}px`,
+              maxWidth: `${column.width}px`,
+              padding: "12px",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              width: "100%",
-              overflow: "hidden",
+              justifyContent: column.className?.includes("text-left")
+                ? "flex-end"
+                : column.className?.includes("text-center")
+                ? "center"
+                : "flex-start",
+              cursor: "pointer",
+              userSelect: "none",
+              borderRight: "1px solid #e5e7eb",
+              transition: "background-color 0.2s ease",
+              boxSizing: "border-box",
+              backgroundColor: isProductTotalColumn ? "#fed7aa" : "#f3f4f6", // Orange background
+              borderLeft: isProductTotalColumn ? "2px solid #f59e0b" : "none", // Orange border
+            }}
+            onClick={() => onSort && onSort(column.key)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = isProductTotalColumn ? "#fdba74" : "#e5e7eb";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = isProductTotalColumn ? "#fed7aa" : "#f3f4f6";
             }}
           >
-            <span
+            <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
                 overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
               }}
             >
-              {column.title}
-            </span>
-            {sortConfig.key === column.key && (
               <span
                 style={{
-                  marginLeft: "4px",
-                  fontSize: "0.75rem",
-                  flexShrink: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
-                {sortConfig.direction === "asc" ? "↑" : "↓"}
+                {column.title}
               </span>
-            )}
+              {sortConfig.key === column.key && (
+                <span
+                  style={{
+                    marginLeft: "4px",
+                    fontSize: "0.75rem",
+                    flexShrink: 0,
+                  }}
+                >
+                  {sortConfig.direction === "asc" ? "↑" : "↓"}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 });
@@ -214,6 +228,9 @@ const VirtualDataTable = ({
   summary = {},
   onLoadMore,
   hasNextPage = false,
+  // NEW PROPS FOR TOTALS
+  showTotals = false,
+  showRowTotals = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
@@ -327,6 +344,61 @@ const VirtualDataTable = ({
     return sorted;
   }, [filteredData, sortConfig, compareValues]);
 
+  // TOTALS CALCULATION
+  const finalData = useMemo(() => {
+    if (!showTotals || !processedData || processedData.length === 0) {
+      return showRowTotals ? processedData.map(row => ({
+        ...row,
+        rowTotal: Object.keys(row)
+          .filter(key => key.match(/^[A-Z]{3}-\d{4}$/))
+          .reduce((sum, quarter) => sum + (row[quarter] || 0), 0)
+      })) : processedData;
+    }
+
+    // Calculate total row
+    const totalRow = {
+      id: 'TOTAL_ROW',
+      productName: 'TOTAL',
+      location: `${processedData.length} Products`,
+      amcStartDate: '',
+      uatDate: '',
+    };
+
+    // Sum all numeric columns
+    processedData.forEach(row => {
+      Object.keys(row).forEach(key => {
+        const value = row[key];
+        if (typeof value === 'number') {
+          if (!totalRow[key]) totalRow[key] = 0;
+          totalRow[key] += value;
+        }
+      });
+    });
+
+    // Add row totals to all rows if requested
+    const dataWithRowTotals = showRowTotals ? 
+      [...processedData, totalRow].map(row => ({
+        ...row,
+        rowTotal: Object.keys(row)
+          .filter(key => key.match(/^[A-Z]{3}-\d{4}$/))
+          .reduce((sum, quarter) => sum + (row[quarter] || 0), 0)
+      })) :
+      [...processedData, totalRow];
+
+    return dataWithRowTotals;
+  }, [processedData, showTotals, showRowTotals]);
+
+  // COLUMNS WITH ROW TOTALS
+  const finalColumns = useMemo(() => {
+    if (!showRowTotals) return columns;
+    return [...columns, {
+      key: "rowTotal",
+      title: " PRODUCT TOTAL",
+      width: 150,
+      className: "text-left",
+    }];
+  }, [columns, showRowTotals]);
+
   // Handle sorting
   const handleSort = useCallback(
     (key) => {
@@ -369,9 +441,9 @@ const VirtualDataTable = ({
   // Check if item is loaded for infinite scrolling
   const isItemLoaded = useCallback(
     (index) => {
-      return !!processedData[index];
+      return !!finalData[index];
     },
-    [processedData]
+    [finalData]
   );
 
   // Load more items for infinite scrolling
@@ -388,12 +460,12 @@ const VirtualDataTable = ({
   // Data for the list component
   const listData = useMemo(
     () => ({
-      items: processedData,
+      items: finalData,
       onRowClick,
-      visibleColumns: columns,
+      visibleColumns: finalColumns,
       formatters,
     }),
-    [processedData, onRowClick, columns, formatters]
+    [finalData, onRowClick, finalColumns, formatters]
   );
 
   return (
@@ -429,10 +501,10 @@ const VirtualDataTable = ({
             {onExport && (
               <Button
                 icon={<ExportOutlined />}
-                onClick={() => onExport(processedData)}
+                onClick={() => onExport(finalData)}
                 type="primary"
               >
-                Export ({processedData.length} items)
+                Export ({finalData.length} items)
               </Button>
             )}
           </Space>
@@ -506,7 +578,7 @@ const VirtualDataTable = ({
             {summary.errors > 0 && (
               <Tag color="error">Errors: {summary.errors.toLocaleString()}</Tag>
             )}
-            {processedData.length > 10000 && (
+            {finalData.length > 10000 && (
               <Tag color="purple" style={{ fontSize: "10px" }}>
                 ⚡ Virtual scrolling active
               </Tag>
@@ -525,7 +597,7 @@ const VirtualDataTable = ({
         }}
       >
         {/* Scrollable container for both header and data */}
-        {processedData.length > 0 ? (
+        {finalData.length > 0 ? (
           <div
             style={{
               position: "relative",
@@ -544,7 +616,7 @@ const VirtualDataTable = ({
               }}
             >
               <TableHeader
-                columns={columns}
+                columns={finalColumns}
                 onSort={handleSort}
                 sortConfig={sortConfig}
               />
@@ -554,14 +626,14 @@ const VirtualDataTable = ({
             <InfiniteLoader
               isItemLoaded={isItemLoaded}
               itemCount={
-                hasNextPage ? processedData.length + 1 : processedData.length
+                hasNextPage ? finalData.length + 1 : finalData.length
               }
               loadMoreItems={loadMoreItems}
               threshold={15}
             >
               {({ onItemsRendered, ref }) => {
                 // Calculate total width for virtual list to match header/rows
-                const totalWidth = columns.reduce(
+                const totalWidth = finalColumns.reduce(
                   (sum, col) => sum + (col.width || 150),
                   0
                 );
@@ -570,7 +642,7 @@ const VirtualDataTable = ({
                   <List
                     ref={ref}
                     height={height - 150} // Account for header and controls + header height
-                    itemCount={processedData.length}
+                    itemCount={finalData.length}
                     itemSize={rowHeight}
                     itemData={listData}
                     onItemsRendered={onItemsRendered}
@@ -609,7 +681,7 @@ const VirtualDataTable = ({
           textAlign: "center",
         }}
       >
-        Showing {processedData.length.toLocaleString()} of{" "}
+        Showing {finalData.length.toLocaleString()} of{" "}
         {data.length.toLocaleString()} items
         {searchTerm && ` (filtered by "${searchTerm}")`}
       </div>

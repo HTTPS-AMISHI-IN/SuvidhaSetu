@@ -20,18 +20,22 @@ const ManualProductForm = ({ onAddProduct }) => {
   const [formData, setFormData] = useState({
     productName: "",
     invoiceValue: "",
+    invoiceNumber: "",
     quantity: 1,
     location: "",
     uatDate: new Date().toISOString().split("T")[0],
   });
 
   const handleSubmit = () => {
-    const { productName, invoiceValue, quantity, location, uatDate } = formData;
+    const { productName, invoiceValue, invoiceNumber, quantity, location, uatDate } = formData;
 
     if (
       !productName.trim() ||
       !invoiceValue ||
       parseFloat(invoiceValue) <= 0 ||
+      !invoiceNumber.trim() || '',
+      invoiceNumber.length < 5 ||
+      invoiceNumber.length > 20 ||
       !location.trim() ||
       !uatDate
     ) {
@@ -43,6 +47,7 @@ const ManualProductForm = ({ onAddProduct }) => {
       id: `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       productName: productName.trim(),
       invoiceValue: parseFloat(invoiceValue),
+      invoiceNumber: invoiceNumber.trim() || '',
       quantity: parseInt(quantity) || 1,
       location: location.trim(),
       uatDate: uatDate,
@@ -55,6 +60,7 @@ const ManualProductForm = ({ onAddProduct }) => {
     setFormData({
       productName: "",
       invoiceValue: "",
+      invoiceNumber: "",
       quantity: 1,
       location: "",
       uatDate: new Date().toISOString().split("T")[0],
@@ -98,7 +104,7 @@ const ManualProductForm = ({ onAddProduct }) => {
             }}
           />
         </div>
-
+        
         <div>
           <label
             style={{
@@ -119,6 +125,35 @@ const ManualProductForm = ({ onAddProduct }) => {
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, invoiceValue: e.target.value }))
             }
+            style={{
+              width: "100%",
+              padding: "8px 12px",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              fontSize: "0.9rem",
+            }}
+          />
+        </div>
+
+        <div>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "8px",
+              fontWeight: 600,
+              color: "#374151",
+            }}
+          >
+            Invoice Number *
+          </label>
+          <input
+            type="text"
+            placeholder="Enter invoice number"
+            value={formData.invoiceNumber}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, invoiceNumber: e.target.value.replace(/\D/g, '') })) // Allow only digits
+            }
+            maxLength={20}
             style={{
               width: "100%",
               padding: "8px 12px",
@@ -237,7 +272,6 @@ const ManualProductForm = ({ onAddProduct }) => {
 };
 
 const EnhancedAmcCalculator = () => {
- 
   // Redux selectors
   const excelData = useSelector(selectExcelData);
   const hasExcelData = useSelector(selectHasData);
@@ -436,6 +470,12 @@ const excelEpoch = new Date(1900, 0, 1);
             }
             return parsed;
           })(),
+          invoiceNumber: String(
+            row["Invoice Number"] ||
+            row.invoiceNumber ||
+            row["Invoice No"] ||
+            row["Invoice No."] || ''
+          ),
           location: row.Location || row.location || "Unknown",
           //  DATE PARSING 
           uatDate: parseExcelDate(
@@ -514,6 +554,7 @@ const excelEpoch = new Date(1900, 0, 1);
         productName: product.productName,
         location: product.location || "Unknown",
         invoiceValue: product.invoiceValue,
+        invoiceNumber: product.invoiceNumber || '',
         quantity: product.quantity,
         amcStartDate: product.amcStartDate,
         uatDate: product.uatDate,
@@ -608,6 +649,8 @@ const excelEpoch = new Date(1900, 0, 1);
       roiOptions: roiGroups,
     };
   }, [currentResults, rawResults, settings.roiRates]);
+  console.log("Filtered Results Sample:", filteredResults.slice(0,3));
+
 
   // Handle AMC calculation
   const handleCalculate = useCallback(async () => {
@@ -794,6 +837,7 @@ const excelEpoch = new Date(1900, 0, 1);
           row["Product Name"] = product.productName;
           row["Location"] = product.location;
           row["Invoice Value"] = product.invoiceValue;
+          row["Invoice Number"] = product.invoiceNumber;
           row["Quantity"] = product.quantity;
           row["UAT Date"] = product.uatDate;
           row["AMC Start Date"] = product.amcStartDate;
@@ -927,7 +971,7 @@ const excelEpoch = new Date(1900, 0, 1);
       showWithoutGST,
     ]
   );
-
+  
   // Generate dynamic table columns based on calculation results (like Excel AMC Schedule sheet)
   const tableColumns = useMemo(() => {
     // Base columns (matching Excel AMC Schedule sheet)
@@ -946,9 +990,16 @@ const excelEpoch = new Date(1900, 0, 1);
       },
       {
         key: "invoiceValue",
-        title: "Cost",
-        width: 100,
+        title: "Invoice Value",
+        width: 180,
         className: "text-right",
+      },
+      {
+        key: "invoiceNumber",
+        title: "Invoice Number",
+        width: 150,
+        className: "text-left",
+        formatter: (value, row) => value || "-"
       },
       {
         key: "quantity",
@@ -986,17 +1037,18 @@ const excelEpoch = new Date(1900, 0, 1);
     }
 
     // Sort quarters chronologically (year first, then quarter within year)
-    const quarterOrder = { JFM: 0, AMJ: 1, JAS: 2, OND: 3 };
+    const quarterOrder = { JFM: 1, AMJ: 2, JAS: 3, OND: 4 };
     const sortedQuarters = Array.from(quarterSet).sort((a, b) => {
       const [qA, yearA] = a.split("-");
       const [qB, yearB] = b.split("-");
 
-      // First sort by year
-      if (parseInt(yearA) !== parseInt(yearB)) {
-        return parseInt(yearA) - parseInt(yearB);
+      const numYearA = parseInt(yearA, 10);
+      const numYearB = parseInt(yearB, 10);
+      
+      if (numYearA !== numYearB) {
+        return numYearA - numYearB;
       }
-
-      // Then sort by quarter within the same year
+      
       return quarterOrder[qA] - quarterOrder[qB];
     });
 
@@ -1290,7 +1342,16 @@ const excelEpoch = new Date(1900, 0, 1);
                         textAlign: "right",
                       }}
                     >
-                      Cost (Parsed)
+                      Invoice Value
+                    </th>
+                    <th
+                      style={{
+                        padding: "8px",
+                        border: "1px solid #e2e8f0",
+                        textAlign: "left",
+                      }}
+                    >
+                      Invoice Number
                     </th>
                     <th
                       style={{
@@ -1353,6 +1414,11 @@ const excelEpoch = new Date(1900, 0, 1);
                             (₹{(item.invoiceValue / 10000000).toFixed(2)} Cr)
                           </span>
                         )}
+                      </td>
+                      <td
+                        style={{ padding: "8px", border: "1px solid #e2e8f0" }}
+                        >
+                          {item.invoiceNumber || 'N/A'}
                       </td>
                       <td
                         style={{
@@ -1582,6 +1648,9 @@ const excelEpoch = new Date(1900, 0, 1);
                     </span>
                     <span style={{ color: "#64748b" }}>
                       ₹{product.invoiceValue.toLocaleString()}
+                    </span>
+                    <span style={{ color: "#64748b" }}>
+                      {product.invoiceNumber || 'N/A'}
                     </span>
                     <span style={{ color: "#64748b" }}>{product.location}</span>
                     <span style={{ color: "#64748b" }}>
@@ -2278,89 +2347,128 @@ const excelEpoch = new Date(1900, 0, 1);
         </div>
       )}
 
-      {/* Quarter-wise Summary */}
-      {hasCalculations && Object.keys(quarterTotals).length > 0 && (
-        <div style={cardStyle}>
-          <h3
-            style={{
-              fontSize: "1.25rem",
-              fontWeight: 700,
-              color: "#1e293b",
-              margin: "0 0 24px 0",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            📊 Quarter-Wise AMC Totals for {selectedLocation}
-          </h3>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "16px",
-            }}
-          >
-            {Object.entries(quarterTotals)
-              .sort(([a], [b]) => {
-                const [yearA, quarterA] = a.split("-");
-                const [yearB, quarterB] = b.split("-");
-                if (yearA !== yearB) return parseInt(yearA) - parseInt(yearB);
-                const qOrder = { JFM: 0, AMJ: 1, JAS: 2, OND: 3 };
-                return qOrder[quarterA] - qOrder[quarterB];
-              })
-              .map(([key, totals]) => {
-                const [year, quarter] = key.split("-");
-                const quarterColors = {
-                  JFM: "#e0f2fe",
-                  AMJ: "#fef3c7",
-                  JAS: "#f0fdf4",
-                  OND: "#fce7f3",
-                };
-                return (
-                  <div
-                    key={key}
-                    style={{
-                      padding: "16px",
-                      backgroundColor: quarterColors[quarter] || "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "12px",
-                      textAlign: "center",
-                    }}
-                  >
+     {/* Quarter-wise Summary */}
+        {hasCalculations && Object.keys(quarterTotals).length > 0 && (
+          <div style={cardStyle}>
+            <h3
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: 700,
+                color: "#1e293b",
+                margin: "0 0 24px 0",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              📊 Quarter-Wise AMC Totals for {selectedLocation}
+            </h3>
+            
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              {Object.entries(quarterTotals)
+                .sort(([a], [b]) => {
+                  // Debug: log the keys to see their format
+                  console.log('Sorting quarter keys:', a, b);
+                  
+                  // Handle both possible formats: "Quarter-Year" or "Year-Quarter"
+                  let quarterA, yearA, quarterB, yearB;
+                  
+                  // Check if format is "Quarter-Year" (e.g., "JFM-2024")
+                  if (a.match(/^[A-Z]{3}-\d{4}$/)) {
+                    [quarterA, yearA] = a.split("-");
+                    [quarterB, yearB] = b.split("-");
+                  } 
+                  // Check if format is "Year-Quarter" (e.g., "2024-JFM")
+                  else if (a.match(/^\d{4}-[A-Z]{3}$/)) {
+                    [yearA, quarterA] = a.split("-");
+                    [yearB, quarterB] = b.split("-");
+                  }
+                  // Fallback - try to detect based on which part is numeric
+                  else {
+                    const partsA = a.split("-");
+                    const partsB = b.split("-");
+                    
+                    if (!isNaN(parseInt(partsA[0]))) {
+                      // First part is year
+                      [yearA, quarterA] = partsA;
+                      [yearB, quarterB] = partsB;
+                    } else {
+                      // First part is quarter
+                      [quarterA, yearA] = partsA;
+                      [quarterB, yearB] = partsB;
+                    }
+                  }
+                  
+                  // Convert years to numbers for proper numeric comparison
+                  const numYearA = parseInt(yearA);
+                  const numYearB = parseInt(yearB);
+                  
+                  // First sort by year (numerically)
+                  if (numYearA !== numYearB) {
+                    return numYearA - numYearB;
+                  }
+                  
+                  // If years are same, sort by quarter
+                  const qOrder = { JFM: 0, AMJ: 1, JAS: 2, OND: 3 };
+                  return qOrder[quarterA] - qOrder[quarterB];
+                })
+                .map(([key, totals]) => {
+                  const [year, quarter] = key.split("-");
+                  const quarterColors = {
+                    JFM: "#e0f2fe",
+                    AMJ: "#fef3c7",
+                    JAS: "#f0fdf4",
+                    OND: "#fce7f3",
+                  };
+                  return (
                     <div
+                      key={key}
                       style={{
-                        fontSize: "1rem",
-                        fontWeight: 600,
-                        color: "#374151",
-                        marginBottom: "8px",
+                        padding: "16px",
+                        backgroundColor: quarterColors[quarter] || "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: "12px",
+                        textAlign: "center",
                       }}
                     >
-                      {quarter} {year}
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "1.3rem",
-                        fontWeight: 700,
-                        color: "#059669",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      ₹{Math.round(totals.withGst).toLocaleString()}
-                    </div>
-                    {showWithoutGST && (
-                      <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
-                        Without GST: ₹
-                        {Math.round(totals.withoutGst).toLocaleString()}
+                      <div
+                        style={{
+                          fontSize: "1rem",
+                          fontWeight: 600,
+                          color: "#374151",
+                          marginBottom: "8px",
+                        }}
+                      >
+                        {quarter} {year}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                      <div
+                        style={{
+                          fontSize: "1.3rem",
+                          fontWeight: 700,
+                          color: "#059669",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        ₹{Math.round(totals.withGst).toLocaleString()}
+                      </div>
+                      {showWithoutGST && (
+                        <div style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                          Without GST: ₹
+                          {Math.round(totals.withoutGst).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Split Details - Overlapping Quarters */}
       {showSplitDetails && hasCalculations && (
@@ -2918,12 +3026,15 @@ const excelEpoch = new Date(1900, 0, 1);
               searchable={true}
               filterable={true}
               sortable={true}
+              showTotals={true}
+              showRowTotals={true}
               summary={{
                 ...currentSummary,
                 totalProducts: filteredResults.length,
               }}
               formatters={{
                 invoiceValue: (value) => `₹${value?.toLocaleString() || "0"}`,
+                invoiceNumber: (value) => value || "-",
                 quantity: (value) => value?.toLocaleString() || "0",
                 amcStartDate: (value) =>
                   value ? new Date(value).toLocaleDateString() : "-",
