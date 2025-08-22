@@ -1,6 +1,3 @@
-// AMC Calculation Web Worker - Fixed Critical Issues
-
-// Quarter definitions (business critical) - matching Python implementation
 const QUARTERS = ["JFM", "AMJ", "JAS", "OND"];
 const QUARTER_ORDER = { JFM: 0, AMJ: 1, JAS: 2, OND: 3 };
 
@@ -394,6 +391,7 @@ function calculateProductAMC(product, settings = {}) {
       location: product.location || product.Location || "Unknown Location",
       uatDate: uatDate.toISOString().split("T")[0],
       amcStartDate: amcStartDate.toISOString().split("T")[0],
+      invoiceNumber: product.invoiceNumber || product.Invoice_Number || "Unknown Invoice",
       invoiceValue: invoiceValue,
       quantity: product.quantity || product.Quantity || 1,
       totalAmcValue: Math.round(totalAmcValue * 100) / 100,
