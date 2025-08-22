@@ -6,7 +6,9 @@ import CalculationProgress from "../components/CalculationProgress";
 import CacheManager from "../components/CacheManager";
 import { useAMCCalculationWorker } from "../hooks/useWebWorker";
 import { useAMCCache } from "../hooks/useCalculationCache";
-import { Upload, Plus, FileText, ArrowLeft, Calculator, Package, CheckCircle, AlertCircle, Trash2, AlignCenter } from "lucide-react";
+import { Upload, Plus, FileText, ArrowLeft, Calculator, Download, FileSpreadsheet, Database } from "lucide-react";
+import { AMCExportManager } from '../utils/exportUtils';
+
 
 // Import Redux
 import {
